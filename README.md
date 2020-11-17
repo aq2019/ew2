@@ -6,15 +6,17 @@ Data consists of archived conversations between texters and peer counselors. Eac
 
 Conversations are manually assigned with tags to signal *content* and *completion status*.
 
-One or more *content* tags may be assigned to each conversation, such as:
+In particular:
 
-- 'Anxiety/Stress', 'Confidence', 'Stuck', 'Undervalued', 'Fear', 'Frustrated', 'Uncertain', 'Bullied'
-- 'Benefits or Leave', 'Communication', 'Discrimination', 'Harassment', 'Payroll or time issue', 'Performance', 'Workload/Hours', 'Job Search'
-- 'Manager', 'Coworker'
+- One or more *content* tags may be assigned to each conversation, such as:
+
+  - 'Anxiety/Stress', 'Confidence', 'Stuck', 'Undervalued', 'Fear', 'Frustrated', 'Uncertain', 'Bullied'
+  - 'Benefits or Leave', 'Communication', 'Discrimination', 'Harassment', 'Payroll or time issue', 'Performance', 'Workload/Hours', 'Job Search'
+  - 'Manager', 'Coworker'
 
 The bullet points above represent different categories of tags: *Emotion*, *Issue*, *People*.
 
-One *completion status* tag may be assigned to each conversation: 'Initiated only', 'Incomplete', 'Completed'.
+- One *completion status* tag may be assigned to each conversation: 'Initiated only', 'Incomplete', 'Completed'.
 
 ## tasks
 
