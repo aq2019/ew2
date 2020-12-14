@@ -5,28 +5,24 @@ import boto3
 from collections import defaultdict
 
 
-batches = ['20200116', '20200217', '20201022']
-def data_reader(df_name, batch = batches[-1]):
-    '''
-    df_name: 'conversations', 'conversations_tag', or 'messages'
-    '''
-    if batch not in batches:
-        batches.append(batch)
-    
-    bucket = "[redacted_bucket_name]"
+def data_reader(prefix):
+    bucket_name = "[redacted_bucket_name]"
     s3 = boto3.resource('s3')
-    conversations_df = []
-    for b in batches:
-        df = pickle.loads(s3.Bucket(bucket).Object('redacted_data/' + df_name + '_' + b + '.pkl').get()['Body'].read())
-        conversations_df.append(df)
-    return pd.concat(conversations_df)
+    bucket = s3.Bucket(bucket_name)
+    table = []
+    prefix_objs = bucket.objects.filter(Prefix = 'redacted_data/'+prefix)
+    for obj in prefix_objs:
+        key = obj.key
+        body = obj.get()['Body'].read()
+        df = pickle.loads(body)
+        table.append(df)
+    return pd.concat(table)
 
 class tables():
-    # Read all tables and make callable as features of tables object.
     def __init__(self):
-        self.conv_df = data_reader('conversations', '20201022')
-        self.conv_tag_df = data_reader('conversations_tag', '20201022')
-        self.messages_df = data_reader('messages', '20201022')
+        self.messages_df = data_reader('messages')
+        self.conv_df = data_reader('conversations')
+        self.conv_tag_df = data_reader('tags')
         bucket = "[redacted_bucket_name]"
         s3 = boto3.resource('s3')
         self.tag_dict_df = pickle.loads(s3.Bucket(bucket).Object('tags_dict.pkl').get()['Body'].read())
@@ -43,6 +39,7 @@ class tagset():
         self.factor = db.tag_dict_df[db.tag_dict_df.category == 'Factor']['full_tag_name'].values
         self.industry = db.tag_dict_df[db.tag_dict_df.category == 'Industry']['full_tag_name'].values
         self.texter = db.tag_dict_df[db.tag_dict_df.category == 'Texter']['full_tag_name'].values
+        self.current_tag = db.conv_tag_df.tag.unique()
 
     def by_cat(self, cat):
         if cat == 'Emotion':
