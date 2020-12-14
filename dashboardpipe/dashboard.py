@@ -22,8 +22,11 @@ import streamlit as st
 
 
 np.set_printoptions(precision = 4)
-
+# ========================================
+#===========================================
 #========= load data and process ===========
+#===========================================
+
 @st.cache(suppress_st_warning=False)
 def create_df():
 
@@ -60,25 +63,21 @@ def create_df():
     for i in range(adf.shape[0]):
         if adf['completion_status'][i] == 'Incompl_init_only':
             adf.at[i, 'init_indicator'] = 1
-        # if adf['completion_status'][i] == 'Completed' or adf['completion_status'][i] == 'Incomplete':
         else:
            adf.at[i, 'init_indicator'] = 0
         if adf['completion_status'][i] == 'Completed':
             adf.at[i, 'completion_indicator'] = 1
-        # if adf['completion_status'][i] == 'Incomplete' or adf['completion_status'][i] == 'Incompl_init_only':
         else:
             adf.at[i, 'completion_indicator'] = 0
 
-    # +++++++add predicted initiated only status and comp/incomp status++++++++++++
+    # +++++++add predicted initiated-only status and comp/incomp status++++++++++++
 
     # feature matrix
     fm = adf.drop(['id', 'start_time', 'end_time', 'completion_status', 'init_indicator', 'completion_indicator'], axis=1).copy()
-    #st.write(fm.shape)
-    #st.write(fm.head())
 
     bucket = '[redacted_bucket_name]'
-    init_model_key = '[redacted_key]'
-    comp_model_key = '[redacted_key]'
+    init_model_key = 'saved_model/init_simple_tree.pkl'
+    comp_model_key = 'saved_model/comp_simple_tree.pkl'
 
     init_tree = SimpleTreeModel()
     init_tree.load_model(bucket, init_model_key)
@@ -101,9 +100,6 @@ def create_df():
                 adf.at[i, 'pred_comp_indicator'] = 1
                 j += 1
 
-    #st.write(adf.head())
-    #st.write(adf.shape)
-    #st.write(sum(adf['pred_init_indicator']))
 
     for i in range(adf.shape[0]):
         if adf['pred_init_indicator'][i] == 1:
@@ -115,16 +111,21 @@ def create_df():
     
     return adf
 
+st.cache(suppress_st_warning=False)
+def get_current_tag():
+    return tagset().current_tag
+
 adf = create_df()
 
 
+current_tag = get_current_tag()
 
 
 
 
-
-
+#=========================================
 #========== dashboard layout =============
+#=========================================
 
 
 
@@ -151,7 +152,7 @@ comp_status_method = st.sidebar.radio("Select a method for completion status cla
 
 
 
-# Dashboard part
+# ###########   Dashboard part   #############
 st.subheader('Dashboard')
 
 
@@ -161,7 +162,7 @@ st.subheader('Dashboard')
 # Number of conversations overtime
 
 st.markdown('''
-### Conversations Count
+# Conversations Count
 ''')
 
 # ========================RULE-BAED CODE======================================
@@ -297,10 +298,10 @@ if comp_status_method == 'rule-based tagging':
             st.plotly_chart(d_ct_no_breakdown_fig)
         if conv_ct_itvl == "Year":
             st.plotly_chart(y_ct_no_breakdown_fig)
-
-
 #=======================END RULE-BASED CODE======================================================
 
+
+# =================== Manual tagging code ======================================
 if comp_status_method == 'manual tagging':
     display_firstday = select_start
     display_lastday = select_end
@@ -442,21 +443,19 @@ if comp_status_method == 'manual tagging':
             st.plotly_chart(d_ct_no_breakdown_fig)
         if conv_ct_itvl == "Year":
             st.plotly_chart(y_ct_no_breakdown_fig)
+# =================== END Manual tagging code ======================================
 
 
 st.markdown('''
-### Completion Rate
+# Overall Completion Rate
 ''')
 
 # overall completion rate
-
 #================================RULE-BASED CODE=======================================
 if comp_status_method == 'rule-based tagging':
     compl_rate_incl_untag_fig = px.pie(adf[(adf['start_time'] >= select_start) & (adf['start_time'] <= select_end)],
                                 names = 'pred_completion_status', title = 'Rule-based tagged completion status: {} to {}'.format(select_start, select_end, color = 'pred_completion_status'))
-                                #, color_discrete_map={1:'royalblue', 0:'red'}))
 
-    # st.plotly_chart(compl_rate_incl_untag_fig)
 
     comp_rate_exclude_option = st.multiselect(
         'View overall completion rate excluding:',
@@ -477,16 +476,15 @@ if comp_status_method == 'rule-based tagging':
 
 
     st.plotly_chart(completion_rate_fig)
-
-
 #=============================END RULE-BASED CODE======================================
 
+
+# =================== Manual tagging code ======================================
 if comp_status_method == 'manual tagging':
     compl_rate_incl_untag_fig = px.pie(adf[(adf['start_time'] >= select_start) & (adf['start_time'] <= select_end)],
                                 names = 'completion_status', title = 'Manually tagged completion status: {} to {}'.format(select_start, select_end, color = 'completion_status'))
-                                #, color_discrete_map={1:'royalblue', 0:'red'}))
 
-    # st.plotly_chart(compl_rate_incl_untag_fig)
+
 
     comp_rate_exclude_option = st.multiselect(
         'View overall completion rate excluding:',
@@ -510,11 +508,12 @@ if comp_status_method == 'manual tagging':
 
 
     st.plotly_chart(completion_rate_fig)
+# =================== END Manual tagging code ======================================
+
 
 # Completion rate over time
 
 st.write('Completion Rate Over Time')
-
 
 #==============================RULE-BASED CODE============================================
 if comp_status_method == 'rule-based tagging':
@@ -553,13 +552,10 @@ if comp_status_method == 'rule-based tagging':
         w_fig = go.Figure(data=go.Scatter(x = label_w, y=www['pred_comp_indicator'], mode='markers'), 
                         layout = {"width": 800, "height" : 640, "xaxis": {"title": "Date"}, "yaxis": {"range":[0.0, 1.0], "title":"Completion Rate"}})
         st.plotly_chart(w_fig)
-
-
-
-
-
 #=============================END RULED-BASED CODE===========================================
 
+
+# =================== Manual tagging code ======================================
 if comp_status_method == 'manual tagging':
 
     comp_rate_overtime_exclude_option = st.multiselect(
@@ -600,41 +596,117 @@ if comp_status_method == 'manual tagging':
         w_fig = go.Figure(data=go.Scatter(x = label_w, y=www['completion_indicator'], mode='markers'), 
                         layout = {"width": 800, "height" : 640, "xaxis": {"title": "Date"}, "yaxis": {"range":[0.0, 1.0], "title":"Completion Rate"}})
         st.plotly_chart(w_fig)
+# =================== END Manual tagging code ======================================
 
 
-st.markdown('''
-### Issue Tracking
-''')
 
 # Issue tracking
 
-st.write("Number of Conversations by Tag")
+st.markdown('''
+# Issue Tracking
+''')
 
-tag_cat_option = st.selectbox('Select a tag category:', ('Issue', 'People', 'Emotion', 'Factor', 'Industry', 'Texter'))
-@st.cache(suppress_st_warning=False)
-def create_tag_dict():
-    ts = tagset()
-    return ts 
+view_tag_by = st.radio('Select tagging scheme option:', ('View all tags used in the database within selected date range (tags are not categorized)', 'View tags by tagging scheme (tags are categorized; may not include recently added tags)' ))
 
-tag_category = tag_cat_option
-conversations = db.conv_df
-tags = create_tag_dict()
-select = conversations[(pd.to_datetime(conversations['start_time'])>select_start) & (pd.to_datetime(conversations['start_time'])<select_end)]
-tagset = tags.by_cat(tag_category)
-ttt = db.conv_tag_df[db.conv_tag_df['conv_id'].isin(select['conv_id'].values) & db.conv_tag_df['tag'].isin(tagset)]
-issue_fig = px.histogram(ttt, x="tag").update_xaxes(categoryorder = 'total descending')
-st.write('Tags under this category: ')
-st.write(tagset)
-st.plotly_chart(issue_fig)
+
+if view_tag_by == 'View all tags used in the database within selected date range (tags are not categorized)':
+
+    st.markdown('''
+    ### Disregarding tagging scheme - showing all tags appearing in the database within selected date range:
+    ''')
+    st.write(current_tag)
+
+    st.markdown(
+        '''
+        ### View all tags ordered by frequency
+        '''
+    )
+    conversations = db.conv_df
+
+    select = conversations[(pd.to_datetime(conversations['start_time'])>select_start) & (pd.to_datetime(conversations['start_time'])<select_end)]
+    
+    # view most frequent tags
+    # n_most_frequent = st.slider('Showing most frequent tags:', min_value = 1, max_value=len(current_tag), value=10)
+
+    all_tag_freq_df = db.conv_tag_df[db.conv_tag_df['conv_id'].isin(select['conv_id'].values)]
+    all_tag_freq_df = pd.merge(all_tag_freq_df, adf, how='left', left_on='conv_id', right_on='id')[['id', 'tag', 'completion_status', 'pred_completion_status']].dropna()
+    default_exclude_tag = ['1.1 Completed', '1.2 Incomplete', '1.3 Incomplete: Initiated only', '2.1 Core Issue', '2.2 Ideal Outcome', '2.3 Action Plan', '3.0 Exclude','zSentSurvey','z-repeat',
+    'zReturnAfterIncomplete', 'zReturnAfterCompleted', 'z Test Rule: New Msg', 'zbug', 'untagged', 'Return Texter New Topic', 'zReturnAfterInitiated']
+    excluede_tag = st.multiselect('Exclude (type to add):', list(current_tag), default=default_exclude_tag)
+    #brkdwn1 = st.radio('show completion status breakdown', ('No', 'Yes'))
+    
+    all_tags_freq_fig = px.histogram(all_tag_freq_df[~all_tag_freq_df.tag.isin(excluede_tag)], x="tag", color_discrete_sequence=['#330C73']).update_xaxes(categoryorder = 'total descending')
+    st.plotly_chart(all_tags_freq_fig)
+
+    # view tags by selection
+    st.markdown(
+        '''
+        ### View individual tag counts
+        '''
+    )
+    selected_tags = st.multiselect('Select tags:', current_tag)
+    freq_by_tags_df = db.conv_tag_df[db.conv_tag_df['conv_id'].isin(select['conv_id'].values) & db.conv_tag_df['tag'].isin(selected_tags)]
+    freq_by_tags_df = pd.merge(freq_by_tags_df, adf, how='left', left_on='conv_id', right_on='id') # data has issue: this dataframe includes data with date 'Sep 21, 1677'
+    freq_by_tags_df = freq_by_tags_df[['id', 'tag', 'completion_status', 'pred_completion_status']].dropna()
+    #st.write(freq_by_tags_df[freq_by_tags_df['id'].isnull()])
+    brkdwn2 = st.radio('show completion status breakdown:', ('No', 'Yes'))
+    if brkdwn2 == 'No':
+        tags_freq_fig = px.histogram(freq_by_tags_df, x="tag", color_discrete_sequence=['#330C73']).update_xaxes(categoryorder = 'total descending')
+        st.plotly_chart(tags_freq_fig)
+    if brkdwn2 == 'Yes':
+        if selected_tags:
+            if comp_status_method == 'manual tagging':
+                tags_freq_fig = px.histogram(
+                    freq_by_tags_df, x="tag", 
+                    color = 'completion_status', 
+                    color_discrete_map={'Completed':'royalblue', 'Incomplete':'red', 'no_compl_status_tag':'lightgray', 'Incompl_init_only':'lightpink'}
+                    ).update_xaxes(categoryorder = 'total descending')
+                st.plotly_chart(tags_freq_fig)
+            if comp_status_method == 'rule-based tagging':
+                tags_freq_fig = px.histogram(
+                    freq_by_tags_df, x="tag", 
+                    color = 'pred_completion_status', 
+                    color_discrete_map={'Completed':'royalblue', 'Incomplete':'red', 'Initiated only':'lightpink'}
+                    ).update_xaxes(categoryorder = 'total descending')
+                st.plotly_chart(tags_freq_fig)
+
+    
+
+
+if view_tag_by == 'View tags by tagging scheme (tags are categorized; may not include recently added tags)':
+
+
+    st.write("Number of Conversations by Tag")
+
+    tag_cat_option = st.selectbox('Select a tag category:', ('Issue', 'People', 'Emotion', 'Factor', 'Industry', 'Texter'))
+    @st.cache(suppress_st_warning=False)
+    def create_tag_dict():
+        ts = tagset()
+        return ts 
+
+    tag_category = tag_cat_option
+    conversations = db.conv_df
+    tags = create_tag_dict()
+    select = conversations[(pd.to_datetime(conversations['start_time'])>select_start) & (pd.to_datetime(conversations['start_time'])<select_end)]
+    tagset = tags.by_cat(tag_category)
+    ttt = db.conv_tag_df[db.conv_tag_df['conv_id'].isin(select['conv_id'].values) & db.conv_tag_df['tag'].isin(tagset)]
+    issue_fig = px.histogram(ttt, x="tag").update_xaxes(categoryorder = 'total descending')
+    st.write('Tags under this category: ')
+    st.write(tagset)
+    st.plotly_chart(issue_fig)
 
 # Completion rate vs tag
-st.write("Completion Rate by Tag")
+st.markdown(
+    '''
+    # Completion Rate by Tag
+    '''
+    )
 
 
 
-tags_to_choose = list(tags.by_cat('Emotion')) + list(tags.by_cat('Issue')) + list(tags.by_cat('People')) + list(tags.by_cat('Factor')) + list(tags.by_cat('Industry')) + list(tags.by_cat('Texter'))
-#['Job Search', 'Performance', 'Communication', 'Workload/Hours', 'Payroll or time issue', 'Discrimination', 'Harassment', 'Harassment: Sexual', 'Benefits or Leave']
-tag_option = st.multiselect('Select tags to view completion rate:\n (You may type to find a tag.)', tags_to_choose)
+#tags_to_choose = list(tags.by_cat('Emotion')) + list(tags.by_cat('Issue')) + list(tags.by_cat('People')) + list(tags.by_cat('Factor')) + list(tags.by_cat('Industry')) + list(tags.by_cat('Texter'))
+
+tag_option = st.multiselect('Select tags to view completion rate:\n (You may type to find a tag.)', current_tag)
 
 #============================RULE-BASED CODE=========================================
 if comp_status_method == 'rule-based tagging':
@@ -665,10 +737,10 @@ if comp_status_method == 'rule-based tagging':
                 tag_comp_rate_fig.update_traces(textposition='inside', textinfo='percent+label')
                 tag_comp_rate_fig.update_layout(height=500, width=500, title_text=tag_name)
                 st.plotly_chart(tag_comp_rate_fig)
-
-
 #===========================END RULE-BASED CODE======================================
 
+
+#=========================== Manual tagging code ======================================
 if comp_status_method == 'manual tagging':
     comp_rate_by_tag_exclude_option = st.multiselect(
         'View completion rate by tag excluding:',
@@ -700,12 +772,12 @@ if comp_status_method == 'manual tagging':
                 tag_comp_rate_fig.update_traces(textposition='inside', textinfo='percent+label')
                 tag_comp_rate_fig.update_layout(height=500, width=500, title_text=tag_name)
                 st.plotly_chart(tag_comp_rate_fig)
-
+#=========================== END Manual tagging code ======================================
 
 # Tracking incoming message volume by day/time
 
 st.markdown('''
-### Traffic Tracking
+# Traffic Tracking
 ''')
 
 
@@ -714,8 +786,11 @@ messages = db.messages_df
 messages['message_date'] = pd.to_datetime(messages['message_date'])
 select = messages[(messages['direction'] == 'Inbound') & (messages['message_date']>select_start) & (messages['message_date']<select_end)]
 message_day_time = select[['message_date']].groupby([select['message_date'].dt.weekday, select['message_date'].dt.hour]).count()
+
 message_day_time.index = message_day_time.index.set_names(['day of week', 'hour'])
+
 message_day_time = message_day_time.unstack(level=0).unstack(level=0).fillna(0)
+
 count_range = max(message_day_time) + 100
 
 h = 24
@@ -734,9 +809,6 @@ weekday_msg = {}
 for dd in days:
     weekday_msg[dd] = pd.DataFrame({'message count':weekday_message[dd].values.astype(int), 'hour of day':np.arange(1,len(weekday_message[dd])+1 )})
 
-# st.write(weekday_message['Wed'].head())
-# st.write(message_day_time)
-    
 volume_tracking_fig = make_subplots(rows=7, cols=1, subplot_titles=("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"))
 
 for i in range(7):
@@ -756,23 +828,33 @@ st.plotly_chart(volume_tracking_fig)
 # Volunteer activities
 
 st.markdown('''
-### Volunteer Activities
+# Volunteer Activities
 ''')
 volunteer_list = db.messages_df.attributed_to.unique()
 slt_vlt = st.selectbox('Select a volunteer to view recent conversations (you may type to find a volunteer)', volunteer_list) #selected volunteer
 slt_vlt_conv_id = db.messages_df[db.messages_df['attributed_to'] == slt_vlt].conversation_id.unique() #conversations associated with the selected volunteer
 st.text('This volunteer has {} conversations in the database \n (from {} to {})'.format(len(slt_vlt_conv_id), db_start_date, db_end_date))
-def vlt_slider_max(n):
-    if n >= 100:
-        return 100
-    else:
-        return n
 
-vlt_conv_num_show = st.slider('Showing most recent conversations:', min_value = 1, max_value=vlt_slider_max(len(slt_vlt_conv_id)), value=3)
-slt_vlt_df = db.conv_df[db.conv_df.conv_id.isin(slt_vlt_conv_id)].copy()
+
+vlt_conv_num_show = st.slider('Showing most recent conversations:', min_value = 1, max_value=min(len(slt_vlt_conv_id), 100), value=3)
+exclude = st.radio('Excluding initiated only?', ['Yes', 'No'])
+
+
+slt_vlt_df = db.conv_df[db.conv_df.conv_id.isin(slt_vlt_conv_id)].drop(['completion_status'], axis=1).copy()
+slt_vlt_df = pd.merge(slt_vlt_df, adf[['id', 'completion_status', 'pred_completion_status']], left_on = 'conv_id', right_on = 'id')
 slt_vlt_df['start_time'] = pd.to_datetime(slt_vlt_df['start_time'])
-slt_vlt_df = slt_vlt_df.sort_values(by = ['start_time'], ascending=False)
-st.write(slt_vlt_df.head(vlt_conv_num_show))
+
+if exclude == 'No':
+    slt_vlt_df_no_exclude = slt_vlt_df.sort_values(by = ['start_time'], ascending=False)
+    st.write(slt_vlt_df_no_exclude.drop(['completion_status', 'pred_completion_status', 'id'], axis = 1).head(vlt_conv_num_show))
+if exclude == 'Yes' and comp_status_method == 'manual tagging':
+    slt_vlt_df_exclude = slt_vlt_df[slt_vlt_df.completion_status.isin(['Completed', 'Incomplete'])].sort_values(by = ['start_time'], ascending=False)
+    st.write(slt_vlt_df_exclude.drop(['completion_status', 'pred_completion_status', 'id'], axis = 1).head(vlt_conv_num_show))
+if exclude == 'Yes' and comp_status_method == 'rule-based tagging':
+    slt_vlt_df_exclude = slt_vlt_df[slt_vlt_df.pred_completion_status.isin(['Completed', 'Incomplete'])].sort_values(by = ['start_time'], ascending=False)
+    st.write(slt_vlt_df_exclude.drop(['completion_status', 'pred_completion_status', 'id'], axis = 1).head(vlt_conv_num_show))
+
+
 
 
 
